@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(metafor)
 library(tidyverse)
+library(lubridate)
 ```
 
 ```{r prep-fun, include = F}
@@ -47,28 +48,6 @@ run.analysis <- function(data){
 }
 ```
 
-sitesource_label = case_when(source == "ufl" ~ "University of Florida",
-                                             source == "occid" ~ "Occidental College",
-                                             source == "ashland" ~ "Ashland University",
-                                             source == "ithaca" ~ "Ithaca College",
-                                             source == "riverside" ~ "University of California, Riverside",
-                                             source == "wesleyan_inhouse" ~ "Wesleyan University",
-                                             source == "uwmadison_expert" ~ "University of Wisconsin",
-                                             source == "uwmadison_inhouse" ~ "University of Wisconsin",
-                                             source == "vcu" ~ "Virginia Commonwealth University",
-                                             source == "sou_inhouse" ~ "Southern Oregon University",
-                                             source == "plu" ~ "Pacific Lutheran University",
-                                             source == "byui" ~ "Brigham Young University - Idaho",
-                                             source == "azusa" ~ "Azusa Pacific University",
-                                             source == "cnj" ~ "The College of New Jersey",
-                                             source == "wpi" ~ "Worcester Polytechnic Institute",
-                                             source == "illinois" ~ "University of Illinois",
-                                             source == "kansas_expert" ~ "University of Kansas",
-                                             source == "kansas_inhouse" ~ "University of Kansas",
-                                             source == "upenn" ~ "University of Pennsylvania",
-                                             source == "pace_inhouse" ~ "Pace University",
-                                             source == "pace_expert" ~ "Pace University")
-  )
 
 ```{r data}
 merged <- readRDS("data/merged_deidentified_full.rds")
@@ -93,33 +72,88 @@ levels(merged$race)
 #                                             , "Caucasion & Hispanic/Latina", "Thai and Caucasian"), 1, 0)
 # not needed anymore
 
+
+dates <- case_when(merged$date == "4/11" ~ "4/11/2017",
+                   merged$date == "4/12" ~ "4/12/2017",
+                   merged$date == "4/18" ~ "4/18/2017",
+                   merged$date == "4/19" ~ "4/19/2017",
+                   merged$date == "4/20" ~ "4/20/2017",
+                   merged$date == "4/21" ~ "4/21/2017",
+                   merged$date == "4/25" ~ "4/25/2017",
+                   merged$date == "4/26" ~ "4/26/2017",
+                   merged$date == "4/28" ~ "4/28/2017",
+                   merged$date == "4/13/2107" ~ "4/13/2017",
+                   TRUE ~ merged$date)
+
+mdy <- mdy(dates) # automatically convert dates in the month-day-year format
+ymd <- ymd(dates) # automatically convert dates in the year-month-day format
+mdy[is.na(mdy)] <- ymd[is.na(mdy)] # combine
+
+merged$date_formated <- mdy
+
+# rules for N-based site exclusions
+nbysource <- with(merged, tapply(dv_order, list(source), length))
+include2 <- names(which(nbysource >= 60))
+include3 <- names(which(nbysource >= 80))
+
 # Create variables, indexes, and exclusion rules ----
 # compute exclusion rules
-merged <- mutate(merged, 
-                 # Exclusion rule 1:
-                 #1. Wrote something for both writing prompts
-                 #2. Completed all six items evaluating the essay authors)
-                 pass_ER1 = !is.na(pro_minus_anti) & (msincomplete == 0 | is.na(msincomplete)) & # completed both prompts
-                   !is.na(prous3) & !is.na(prous4) & !is.na(prous5) &  # P provided all 3 ratings of pro-us essay
-                   !is.na(antius3) & !is.na(antius4) & !is.na(antius5),# P provided all 3 ratings of anti-us
-                 # Exclusion rule 2:
-                 # as above, plus
-                 #3. Identify as White (race == 1)
-                 #4. Born in USA (countryofbirth == 1)
-                 pass_ER2 = pass_ER1 &
-                   (race == "1") & # white ps, NA race discarded
-                   (countryofbirth == "1"),
-                 # Exclusion rule 3:
-                 # as above, plus
-                 # 5. Score a 7 or higher on the American Identity item
-                 pass_ER3 = pass_ER2 &
-                   (americanid >= 7 & !is.na(americanid)) # strongly ID as american, NAs discarded
+merged <- merged %>% group_by(source) %>% mutate(row_id = row_number()) %>% ungroup() %>%
+  mutate(merged, 
+         # Participant-level exclusion rules 
+         # make sure that all IH participants are included in the ML-based ERs
+         pass_ER1 = ifelse(expert==0, TRUE, pass_ER1), 
+         pass_ER2 = ifelse(expert==0, TRUE, pass_ER2),
+         pass_ER3 = ifelse(expert==0, TRUE, pass_ER3),
+         # In addition to the ML4 application of the exclusion rules (i.e., keep all In-House participants)
+         # we can also apply them ourselved to our best interpretation 
+         # Exclusion rule 1: 
+         #1. Wrote something for both writing prompts
+         #2. Completed all six items evaluating the essay authors)
+         pass_AR1 = (msincomplete == 0 | is.na(msincomplete)) & # completed both prompts
+           !is.na(prous3) & !is.na(prous4) & !is.na(prous5) &  # P provided all 3 ratings of pro-us essay
+           !is.na(antius3) & !is.na(antius4) & !is.na(antius5),# P provided all 3 ratings of anti-us
+         # Exclusion rule 2:
+         # as above, plus
+         #3. Identify as White (race == 1)
+         #4. Born in USA (countryofbirth == 1)
+         pass_AR2 = pass_AR1 &
+           (race == "1") & # white ps, NA race discarded
+           (countryofbirth == "1"),
+         # Exclusion rule 3:
+         # as above, plus
+         # 5. Score a 7 or higher on the American Identity item
+         pass_AR3 = pass_AR2 &
+           (americanid >= 7 & !is.na(americanid)), # strongly ID as american, NAs discarded
+         ## N-based exclusions
+         pass_NR1 = TRUE, #include all labs
+         pass_NR2 = source %in% include2, # only labs with more than 60 participants (as preregistered)
+         pass_NR3 = source %in% include3, # only labs with more than 80 participants (the target, as used by Chatard)
+         ## Protocol-based exclusions
+         pass_PR1 = TRUE, #include all labs
+         pass_PR2 = expert == 1, # only AA protocols
+         ## Timing-based exclusions
+         # Exclude data collected before the pre-reg was registered (February 15, 2017)
+         # for some labs, the data is NA, so for those we just went with what the ML4 authors 
+         # wrote on the how many first participants should be excluded. 
+         # This applies to: ufl: 181 participants excluded
+         pass_TR1 = TRUE, # include all participants 
+         pass_TR2 = (date_formated > "2017-02-15" | is.na(date_formated)) & !(source=="ufl" & row_id < 182)
 )
+merged$row_id <- NULL #remove redundant column 
 ```
+
+## Differences with ML4
+
+In ML4, the participant-level exclusion criteria are only applied to the AA protocols, even though many are also available for the IH protocols (e.g., completeness of the measures). 
+
+In ML4 `NA`'s are excluded for ER1. I don't think it's justified to exclude all `NA`'s for ER1 because that would exclude an additional 300 participants (2 entire labs who only have `NA`'s for the completeness of the writing prompts). For the expert lab that has the same, the authors assume that the prompts were fine (based on detailed notes not reporting any abnormalities). 
 
 ## Exclusion Criteria
 
 Person-level exclusion (Taken from Klein et al., 2019):
+
+Note that these exclusion criteria *only applied to AA sites*!
 
 1. All participants who did not complete the materials.
 2. 1 + All participants who do not identify as white and who were born outside of the United States.
@@ -128,13 +162,23 @@ Person-level exclusion (Taken from Klein et al., 2019):
 Study-level exclusion based on $N$ (from the preregistration):
 
 1. No study-level exclusion.
-2. All studies that have less than 60 participants collected.
-3. All studies that habe less than 40 participants per cell.
+2. All studies that have fewer than 60 participants collected.
+3. All studies that have fewer than 40 participants per cell. --> this one I can't find again, only that they would exclude labs that tested fewer than 80 participants in total. In this case, it just comes down to the same anyways. 
 
 Study-level exclusion based on expert advise (from the comment):
 
 1. No exclusion based on expert advise.
 2. In-house studies are excluded.
+
+Participant-level exclusion based on timing: 
+1. No exclusion based on time of data collection
+2. All participants whose data was collected before the lead team's analysis plan was preregistered. 
+
+We include this as a separate dimension because Klein et al. always apply this criterion, whereas Chatard et al. don't and we also think one shouldn't. 
+
+Application of participant-based exclusion criteria for IH participants:
+1. apply participant-based exclusion criteria *only* to AA studies, keep all participants from IH studies (Klein et al., Chatard et al.)
+2. apply participant-based exclusion criteria to all participants, excluding participants for whom the relevant information is missing (us).
 
 All exclusion criteria are crossed in the following way:
 
@@ -142,201 +186,55 @@ All exclusion criteria are crossed in the following way:
 person.ex <- 1:3
 n.ex <- 1:3
 expert.ex <- 1:2
+time.ex <- 1:2
+ih.ex <- 1:2
 
-crit <- expand.grid(person.ex, n.ex, expert.ex)
+crit <- expand.grid(person.ex, n.ex, expert.ex, time.ex,ih.ex)
 nrow(crit)
+
+# we have 72 potential combinations of exclusion criteria settings
+# let's see if we can combine them and generate datasets automatically
+
+apply_excl = function(set,data){
+  excl_rules = function(x){
+    out = list()
+    out[[ifelse(x[5]==1, paste0("pass_ER",x[1]), paste0("pass_AR",x[1]))]] <- TRUE
+    out[[paste0("pass_NR",x[2])]] <- TRUE
+    out[[paste0("pass_PR",x[3])]] <- TRUE
+    out[[paste0("pass_TR",x[4])]] <- TRUE
+    return(out)
+  }
+  rules <- excl_rules(as.numeric(set))
+  apply_rules = function(data, rules){
+    rules <- rules[names(data)]
+    idx <- Map(`%in%`, data, rules)
+    idx[is.na(names(rules))] <- list(rep(TRUE, nrow(data)))
+    data[Reduce(`&`, idx), ]
+  }
+  dat <- apply_rules(data,rules)
+  # also remove NA  is dv 
+  dat <- dat[!is.na(dat$pro_minus_anti),]
+  
+  metaset <- run.analysis(dat)
+  write.csv(metaset, file=paste0("data/update/metaset_",do.call(paste0, as.list(set)),".csv"), row.names = FALSE)
+  write.csv(dat, file=paste0("data/update/reanalysis_",do.call(paste0, as.list(set)),".csv"), row.names = FALSE)
+}
+
+apply(crit,1, function(f) apply_excl(f,merged))
+
 ```
 
+## Inclusive Analysis
+
+We would propose to include the most inclusive set and vary theory-based participant-level criteria. 
+No time-based: does not make sense, teams had no access to each other's data, lead time did not access prior to preregistration. 
+No study-level based: only lowers power if applied. 
 
 ## Original Analysis
 
-We aim at reanalyzing the key findings of Klein et al (2019) using the exclusion settings (1,1,1), (2,1,1), and (3,1,1).
-
-```{r data-111, fig.width=6, fig.height=4}
-merged.111 <- subset(merged, pass_ER1 == TRUE)
-nrow(merged.111)
-
-#write data
-write.csv2(merged.111, "data/reanalysis_111.csv", row.names = FALSE)
-metaset.111 <- run.analysis(merged.111)
-write.csv2(metaset.111, "data/metaset_111.csv", row.names = FALSE)
-```
-
-```{r data-211, fig.width=6, fig.height=4}
-merged.211 <- subset(merged, pass_ER2 == TRUE)
-nrow(merged.211)
-
-#write data
-write.csv2(merged.211, "data/reanalysis_211.csv", row.names = FALSE)
-metaset.211 <- run.analysis(merged.211)
-write.csv2(metaset.211, "data/metaset_211.csv", row.names = FALSE)
-```
-
-```{r data-311, fig.width=6, fig.height=4}
-merged.311 <- subset(merged, pass_ER3 == TRUE)
-nrow(merged.311)
-
-#write data
-write.csv2(merged.311, "data/reanalysis_311.csv", row.names = FALSE)
-metaset.311 <- run.analysis(merged.311)
-write.csv2(metaset.311, "data/metaset_311.csv", row.names = FALSE)
-```
+We aim at reanalyzing the key findings of Klein et al (2019) using the exclusion settings (1,2,1,2,1), (2,2,1,2,1), and (3,2,1,2,1). This means excluding data collected before February 15, 2017 and using the N=60 per site as the minimum inclusion. The last two criteria were added from the preprint to the published version. 
 
 ## Analysis for the Main Claim of the Comment
 
-We aim at reanalyzing the main claim of Chatard et al (2020) using the exclusion settings (1,3,2), (2,3,2), and (3,3,2). Note that the study-level exclusions are based on the number of participants for exclusion criterion 1.
+We aim at reanalyzing the main claim of Chatard et al (2020) using the exclusion settings (1,3,2,1,1), (2,3,2,1,1), and (3,3,2,1,1). Note that the study-level exclusions are based on the number of participants for exclusion criterion 1.
 
-```{r data-132}
-nbysourcebycond <- with(merged, tapply(dv_order, list(source, ms_condition), length))
-include3 <- names(which(rowSums(nbysourcebycond >= 40) ==2))
-
-merged.132 <- subset(merged.111, source %in% include3 & expert == 1)
-nrow(merged.132)
-
-write.csv2(merged.132, "data/reanalysis_132.csv", row.names = FALSE)
-metaset.132 <- run.analysis(merged.132)
-write.csv2(metaset.132, "data/metaset_132.csv", row.names = FALSE)
-```
-
-```{r data-232}
-merged.232 <- subset(merged.211, source %in% include3 & expert == 1)
-nrow(merged.232)
-
-write.csv2(merged.232, "data/reanalysis_232.csv", row.names = FALSE)
-metaset.232 <- run.analysis(merged.232)
-write.csv2(metaset.232, "data/metaset_232.csv", row.names = FALSE)
-```
-
-```{r data-332}
-merged.332 <- subset(merged.311, source %in% include3 & expert == 1)
-nrow(merged.332)
-
-write.csv2(merged.332, "data/reanalysis_332.csv", row.names = FALSE)
-metaset.332 <- run.analysis(merged.332)
-write.csv2(metaset.332, "data/metaset_332.csv", row.names = FALSE)
-```
-
-```{r check-meta}
-metafor::rma(metaset.332$yi, sei = metaset.332$sei, method="FE")
-```
-
-## All Other Variants
-
-### Exclusion .1.2
-
-```{r data-112}
-merged.112 <- subset(merged.111, expert == 1)
-nrow(merged.112)
-
-write.csv2(merged.112, "data/reanalysis_112.csv", row.names = FALSE)
-metaset.112 <- run.analysis(merged.112)
-write.csv2(metaset.112, "data/metaset_112.csv", row.names = FALSE)
-```
-
-```{r data-212}
-merged.212 <- subset(merged.211, expert == 1)
-nrow(merged.212)
-
-write.csv2(merged.212, "data/reanalysis_212.csv", row.names = FALSE)
-metaset.212 <- run.analysis(merged.212)
-write.csv2(metaset.212, "data/metaset_212.csv", row.names = FALSE)
-```
-
-```{r data-312}
-merged.312 <- subset(merged.311, expert == 1)
-nrow(merged.312)
-
-write.csv2(merged.312, "data/reanalysis_312.csv", row.names = FALSE)
-metaset.312 <- run.analysis(merged.312)
-write.csv2(metaset.312, "data/metaset_312.csv", row.names = FALSE)
-```
-
-### Exclusion .2.1
-
-```{r data-121}
-nbysource <- with(merged, tapply(dv_order, source, length))
-include2 <- names(which(nbysource > 60))
-
-merged.121 <- subset(merged.111, source %in% include2)
-nrow(merged.121)
-
-write.csv2(merged.121, "data/reanalysis_121.csv", row.names = FALSE)
-metaset.121 <- run.analysis(merged.121)
-write.csv2(metaset.121, "data/metaset_121.csv", row.names = FALSE)
-```
-
-```{r data-221}
-merged.221 <- subset(merged.211, source %in% include2)
-nrow(merged.212)
-
-write.csv2(merged.221, "data/reanalysis_221.csv", row.names = FALSE)
-metaset.221 <- run.analysis(merged.221)
-write.csv2(metaset.221, "data/metaset_221.csv", row.names = FALSE)
-```
-
-```{r data-321}
-merged.321 <- subset(merged.311, source %in% include2)
-nrow(merged.321)
-
-write.csv2(merged.321, "data/reanalysis_321.csv", row.names = FALSE)
-metaset.321 <- run.analysis(merged.321)
-write.csv2(metaset.321, "data/metaset_321.csv", row.names = FALSE)
-```
-
-### Exclusion .2.2
-
-```{r data-122}
-merged.122 <- subset(merged.111, source %in% include2 & expert == 1)
-nrow(merged.122)
-
-write.csv2(merged.122, "data/reanalysis_122.csv", row.names = FALSE)
-metaset.122 <- run.analysis(merged.122)
-write.csv2(metaset.122, "data/metaset_122.csv", row.names = FALSE)
-```
-
-```{r data-222}
-merged.222 <- subset(merged.211, source %in% include2 & expert == 1)
-nrow(merged.222)
-
-write.csv2(merged.222, "data/reanalysis_222.csv", row.names = FALSE)
-metaset.222 <- run.analysis(merged.222)
-write.csv2(metaset.222, "data/metaset_222.csv", row.names = FALSE)
-```
-
-```{r data-322}
-merged.322 <- subset(merged.311, source %in% include2 & expert == 1)
-nrow(merged.322)
-
-write.csv2(merged.322, "data/reanalysis_322.csv", row.names = FALSE)
-metaset.322 <- run.analysis(merged.322)
-write.csv2(metaset.322, "data/metaset_322.csv", row.names = FALSE)
-```
-
-### Exclusion .3.1
-
-```{r data-131}
-merged.131 <- subset(merged.111, source %in% include3)
-nrow(merged.131)
-
-write.csv2(merged.131, "data/reanalysis_131.csv", row.names = FALSE)
-metaset.131 <- run.analysis(merged.131)
-write.csv2(metaset.131, "data/metaset_131.csv", row.names = FALSE)
-```
-
-```{r data-231}
-merged.231 <- subset(merged.211, source %in% include3)
-nrow(merged.231)
-
-write.csv2(merged.231, "data/reanalysis_231.csv", row.names = FALSE)
-metaset.231 <- run.analysis(merged.231)
-write.csv2(metaset.231, "data/metaset_231.csv", row.names = FALSE)
-```
-
-```{r data-331}
-merged.331 <- subset(merged.311, source %in% include3 & expert == 1)
-nrow(merged.331)
-
-write.csv2(merged.331, "data/reanalysis_331.csv", row.names = FALSE)
-metaset.331 <- run.analysis(merged.331)
-write.csv2(metaset.331, "data/metaset_331.csv", row.names = FALSE)
-```
