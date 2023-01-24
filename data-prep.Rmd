@@ -143,7 +143,7 @@ merged <- merged %>% group_by(source) %>% mutate(row_id = row_number()) %>% ungr
 merged$row_id <- NULL #remove redundant column 
 ```
 
-## Differences with ML4
+## Differences with ML4 main paper
 
 In ML4, the participant-level exclusion criteria are only applied to the AA protocols, even though many are also available for the IH protocols (e.g., completeness of the measures). 
 
@@ -179,6 +179,12 @@ We include this as a separate dimension because Klein et al. always apply this c
 Application of participant-based exclusion criteria for IH participants:
 1. apply participant-based exclusion criteria *only* to AA studies, keep all participants from IH studies (Klein et al., Chatard et al.)
 2. apply participant-based exclusion criteria to all participants, excluding participants for whom the relevant information is missing (us).
+
+```{r er23}
+#what proportion american and us-born?
+sum(merged$race=="1"&merged$countryofbirth=="1"&merged$expert=="1", na.rm = T)/sum(merged$expert=="1") 
+sum(merged$race=="1"&merged$countryofbirth=="1"&merged$expert=="1"&merged$americanid>=7, na.rm = T)/sum(merged$expert=="1") 
+```
 
 All exclusion criteria are crossed in the following way:
 

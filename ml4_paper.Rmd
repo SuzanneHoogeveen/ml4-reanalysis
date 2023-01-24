@@ -1,38 +1,37 @@
 ---
-title             : "The title"
-shorttitle        : "Title"
+title             : "Improving Statistical Analysis in Team Science: The Case of a Bayesian Multiverse of Many Labs 4"
+shorttitle        : "Analysis in Team Science"
 
 author: 
-  - name          : "First Author"
+  - name          : "Suzanne Hoogeveen"
     affiliation   : "1"
     corresponding : yes    # Define only one corresponding author
-    address       : "Postal address"
-    email         : "my@email.com"
-    role:         # Contributorship roles (e.g., CRediT, https://casrai.org/credit/)
-      - "Conceptualization"
-      - "Writing - Original Draft Preparation"
-      - "Writing - Review & Editing"
-  - name          : "Ernst-August Doelle"
-    affiliation   : "1,2"
-    role:
-      - "Writing - Review & Editing"
-      - "Supervision"
+    address       : "Nieuwe Achtergracht 129B, 1018 WT Amsterdam, The Netherlands"
+    email         : "suzanne.j.hoogeveen@gmail.como"
+  - name          : "Sophie W. Berkhout"
+    affiliation   : "2"
+  - name          : "Quentin F. Gronau"
+    affiliation   : "1"
+  - name          : "Eric-Jan Wagenmakers"
+    affiliation   : "1"
+  - name          : "Julia M. Haaf"
+    affiliation   : "1"
 
 affiliation:
   - id            : "1"
-    institution   : "Wilhelm-Wundt-University"
+    institution   : "University of Amsterdam"
   - id            : "2"
-    institution   : "Konstanz Business School"
+    institution   : "Utrecht University"
 
-authornote: |
-  Add complete departmental affiliations for each author here. Each new line herein must be indented, like this line.
-
-  Enter author note here.
+authornote: | 
+  This research was supported in part by a Vici grant from the Netherlands Organisation for Scientific Research (NWO; 016.Vici.170.083) to EJW, by an NWO Veni grant (VI.Veni.201G.019) to JMH, by an NWO grant to QFG (406.16.528), and by a talent grant from the Amsterdam Brain and Cognition (ABC) research platform, University of Amsterdam (T0921) to SH.
+  
+  Analysis code is provided at https://github.com/SuzanneHoogeveen/ml4-reanalysis. 
 
 abstract: |
-  The abstract. 
+  Team science projects have become the gold standard for assessing the replicability and variability of key findings in psychological science. However, we believe the typical meta-analytic approach in these projects fails to match the wealth of collected data. Instead, we advocate the use of Bayesian hierarchical modeling for team science projects, potentially extended in a multiverse analysis. We illustrate this full-scale analysis by applying it to the recently published Many Labs 4 project. This project aimed to replicate the mortality salience effect -- that being reminded of one's own death strengthens the own cultural identity. In a multiverse analysis we assess the robustness of the results with varying data inclusion criteria and prior settings. Bayesian model comparison results largely converge to a common conclusion: the data provide evidence against a mortality salience effect across the majority of our analyses. We issue general recommendations to facilitate full-scale analyses in team science projects.
   
-keywords          : "keywords"
+keywords          : "Bayes factor, Bayesian hierarchical modeling, Replication, Team science"
 wordcount         : "X"
 
 bibliography      : ["r-references.bib","MyBibs.bib"]
@@ -57,24 +56,16 @@ header-includes:
   - \captionsetup[figure]{font={stretch=1}}
   - \definecolor{Gray}{gray}{0.90}
   - \definecolor{LightCyan}{rgb}{0.90,1,1}
+  - \definecolor{MyGreen}{RGB}{130,202,180}
+  - \definecolor{MyOrange}{RGB}{227,179,143}
+  - \definecolor{MyPurple}{RGB}{185,183,214}
   - \definecolor{SE}{rgb}{1,0.90,1}
   - \definecolor{LightGreen}{rgb}{.9,1,.9}
-
-
+  - \usepackage{marginnote}
+  - \newcommand{\readme}[1]{\emph{\marginnote{Suzanne} (#1)}}
 classoption       : "man"
 output            : papaja::apa6_pdf
 ---
-
-## The main points
-
-What do we want to argue? 
-
-1. When running these elaborate, many-lab style studies, one should make good use of the wealth of data that is obtained. Typically, a frequentist meta-analysis is conducted, in which either a fixed or random effects structure is applied. We would argue that a Bayesian hierarchical model or a model-averaged Bayesian meta-analysis would be better. [Example of good analysis for a "many"-project: ManyBabies @themanybabiesconsortium2020quantifying]. 
-2. If there are multiple defensible analytic choices, such as different exclusion criteria, different prior settings, one should consider a multiverse analysis to explore the consequences of these choices. This allows for a broad overview and avoid (accidental) cherry-picking. 
-3. One should conduct a Bayesian analysis, because that allows for obtaining evidence for the null-hypothesis and quantifying uncertainty. 
-4. Don't exclude labs or countries because they contain few observations and are therefore uncertain. Using a hierarchical model will account for the uncertainty due to sample size and including more observations will always increase the resolution and informativeness of the data. 
-
-The choice of a Bayesian model-averaged meta-analysis or full hierarchical analysis can be debated. If participant-level covariates are of interest, a hierarchical model would be better suited. Also, more flexible in terms of testing specific predictions, such as whether the effect is positive across all labs/sites/countries.  
 
 
 ```{r setup, include = FALSE}
@@ -95,6 +86,13 @@ library(cowplot)
 ggplot2::theme_set(theme_apa(base_size = 10))
 
 ```
+
+## Model 
+The base model for the mortality salience effect is mixed linear model. 
+Let $Y_{ijk}$ be the rating for the $i$th lab, the $j$th participant, and the $k$th condition. Then 
+\[Y_{ijk} \sim N(\mu + \alpha_i + x_k \theta_{i}, \sigma^2),\]
+where $\mu$ is the grand mean, $\alpha_i$ is the $i$th lab's specific overall rating effect, and $\theta_{i}$ is the $i$th lab's mortality salience effect. The variable $x_k = -0.5,0.5$ if $k=1,2$ respectively, with $k=1$ when condition is 'watching TV' and $k=2$ when condition is 'contemplate death'. Here, $\theta_{i}$ is the parameter of interest, that is varied across models to reflect the different constraints. Specifically, for the null model we specify $\theta_i=0$. For the common-effect model $\theta_i=v$ where $v$ represents the true value for the mortality salience effect that is constrained to be positive ($v>0$). For the positive-effects model $\theta_i$ comes from a distribution with a mean mortality salience effect ($\mu_\theta$) and between-study variability in the size of this effect ($\sigma^2_\theta$):  $\theta_i \sim N_+(\mu_\theta, \sigma^2_\theta)$ where the $N_+$ represents a normal distribution truncated at below zero to reflect the prediction that $\theta_i>0$. Finally, for the unconstrained model, we let $\theta_i$ free to vary in size and direction: $\theta_i \sim N(\mu_\theta, \sigma^2_\theta)$. 
+
 
 ```{r bf-function}
 bayesBF <- function(dat, rScale = c(1, .4, .24), M = 30000, Mprior = 200000)
@@ -169,11 +167,17 @@ simple.fig <- function(dat){
   abline(h = 0)
 }
 
-run_rean = function(name){
+run_rean = function(name,rscale = c(1,.4,.24)){
   path.d <- paste0("data/update/reanalysis_", name, ".csv")
   d <- read.csv(path.d, header = T)
-  rean <- bayesBF(dat = d)
-  saveRDS(rean, file = paste0("output/reanalysis_", name, ".rds"))
+  rean <- bayesBF(dat = d,rScale = rscale)
+  if(rscale[2]==.4&rscale[3]==.24){
+    saveRDS(rean, file = paste0("output/reanalysis_", name, "_main.rds"))
+  } else {
+    ef.size <- ifelse(rscale[2]==.2,"small","large")
+    var.size <- ifelse(rscale[3]==.12,"littleVar","muchVar")
+    saveRDS(rean, file = paste0("output/reanalysis_", name,"_",ef.size,"_",var.size,".rds"))
+  }
 }
 
 ```
@@ -215,19 +219,23 @@ keep <- ssize$Set[!duplicated(ssize[,c(2,3)])] # names of unique sets
 
 ```{r run-analyses, cache=TRUE, include=FALSE, eval=FALSE}
 sapply(keep, run_rean)
+sapply(keep, run_rean, rscale=c(1,.2,.12))
+sapply(keep, run_rean, rscale=c(1,.2,.48))
+sapply(keep, run_rean, rscale=c(1,.6,.12))
+sapply(keep, run_rean, rscale=c(1,.6,.48))
 ```
 
 
 ```{r crit-table}
 crits <- data.frame(matrix(unlist(strsplit(as.character(sets), split = c())), ncol = 5, byrow = T))
-colnames(crits) <- c("Participant-level", "N-based", "Protocol","Timing-based","In-House considered")
+colnames(crits) <- c("Participant-level", "N-based", "Protocol","Timing-based","Application P-based")
 crits$`Participant-level` <- ifelse(crits$`Participant-level` == 1, "All"
                                     , ifelse(crits$`Participant-level` == 2, "White & US-born", "US-Identity $>$ 7"))
 crits$`N-based` <- ifelse(crits$`N-based` == 1, "All"
                                     , ifelse(crits$`N-based` == 2, "N $>$ 60", "N $>$ 80"))
 crits$Protocol <- ifelse(crits$Protocol == 1, "All", "AA")
 crits$`Timing-based` <- ifelse(crits$`Timing-based` == 1, "All","After prereg")
-crits$`In-House considered` <- ifelse(crits$`In-House considered` == 1, "No","Yes")
+crits$`Application P-based` <- ifelse(crits$`Application P-based` == 1, "AA only","AA and IH")
 
 tab.all <- cbind(crits, ssize[,c(2,3)])
 doubles <- which(duplicated(tab.all[,c(6,7)]))
@@ -250,18 +258,20 @@ tab.all$Double[which(sets=="32211")] <- TRUE
 
 tab.all$`Participant-level` <- ifelse(tab.all$Double==TRUE, paste0("\\rowcolor{Gray} ",tab.all$`Participant-level`),
                                       tab.all$`Participant-level`)
-tab.all$`Participant-level` <- ifelse(tab.all$Key=="Klein", paste0("\\rowcolor{LightCyan} ",tab.all$`Participant-level`),
-                                      ifelse(tab.all$Key=="Chatard", paste0("\\rowcolor{SE} ",tab.all$`Participant-level`),
+tab.all$`Participant-level` <- ifelse(tab.all$Key=="Klein", paste0("\\rowcolor{MyOrange} ",tab.all$`Participant-level`),
+                                      ifelse(tab.all$Key=="Chatard", paste0("\\rowcolor{MyGreen} ",tab.all$`Participant-level`),
                                              ifelse(tab.all$Key=="inclusive", 
-                                                    paste0("\\rowcolor{LightGreen} ", tab.all$`Participant-level`),
+                                                    paste0("\\rowcolor{MyPurple} ", tab.all$`Participant-level`),
                                                     tab.all$`Participant-level`)))
 colnames(tab.all)[7] <- "N Studies"
-tab.all$Double <- NULL
+#tab.all$Double <- NULL
 tab.all$Key <- NULL
 
-apa_table(tab.all
+tab.all %>% 
+  dplyr::select(!Double) %>%
+  apa_table(.
           , align = c("lllllcc")
-          , note = "Blue rows refer to Klein et al.'s key analyses; pink rows refer to Chatard et al.'s key analyses; green rows refer to the Inclusive analyses; grey rows are repeated data sets and not included in the multiverse analysis; AA = Author-Advised. 'In-House considered' indicates that the participant-level exclusion criteria are also applied to the In-House studies (missing data excluded). "
+          , note = "Orange rows refer to Klein et al.'s key analyses; green rows refer to Chatard et al.'s key analyses; purple rows refer to our chosen analyses; grey rows are repeated data sets and not included in the multiverse analysis; AA = Author-Advised. 'Application P-based' indicates whether the participant-level exclusion criteria are applied to the AA-labs only (retaining all IH-participants) or to both AA- and IH-labs (missing data excluded). "
           , caption = "Exclusion constellations and resulting sample sizes"
           , row.names = F
           , digits = 0
@@ -269,15 +279,29 @@ apa_table(tab.all
           , longtable = TRUE
           , escape = FALSE)
 
-#kbl(tab.all, 
-#      caption = "Exclusion constellations and resulting sample sizes") %>%
-#  kable_classic() %>%
-#  row_spec(doubles, background = "gray")
+```
+
+```{r table-unique}
+
+tab.all %>% 
+  dplyr::filter(!Double) %>%
+  dplyr::select(!Double) %>%
+  apa_table(.
+          , align = c("lllllcc")
+          , note = "Orange rows refer to Klein et al.'s key analyses; green rows refer to Chatard et al.'s key analyses; purple rows refer to our currently chosen analyses; AA = Author-Advised. 'Application P-based' indicates whether the participant-level exclusion criteria are applied to the AA-labs only (retaining all IH-participants) or to both AA- and IH-labs (missing data excluded). "
+          , caption = "Unique Exclusion constellations and resulting sample sizes"
+          , row.names = F
+          , digits = 0
+          , font_size = "footnotesize"
+          , longtable = TRUE
+          , escape = FALSE)
+
 ```
 
 ## Reanalysis with Exclusion Criterion .1.1.1.2
 
 This is our all-inclusive analysis. It includes data from all participants that have completed the relevant measures, all studies, and applied the participant-level exclusion criteria to both Author-Advised (AA) protocols and In-House (IH) protocols. Note that for many IH protocols, the relevant information for participant-level exclusion criteria 3 (and 2 to a lesser degree) is missing. We decided to exclude participants for whom nationality and country of origin (exclusion criterion 2) or identification with American culture (exclusion criterion 3) is unknown as we cannot assume that people met this requirement. For exclusion criterion 1 -- completeness of the measures --, we did retain participants for labs where no information was available, as long as they were assigned to an experimental condition and answered both items of the dependent variable. 
+
 
 ```{r inclusive, include=FALSE}
 rean.11112 <- readRDS("output/reanalysis_11112.rds")
@@ -302,7 +326,7 @@ This is the original main analysis that is the basis for the key claims of the M
 The authors included participants whose data was collected after the lead team posted their preregistration, only studies that featured more than 60 observations (before participant-level exclusions). The participant-level exclusion criteria were only applied to AA-studies, which means that for exclusion criteria 2 and 3 all participants from the IH-studies were retained, indicating that the authors implicitly assumed they were all American, born in the US, and strongly identified with American culture. Exclusion of the observations collected by labs prior to the lead team's preregistration was uploaded caused the authors to discard `r as.numeric(ssize[ssize$Set=="11111",2]) - as.numeric(ssize[ssize$Set=="11121",2])` observations (`r (as.numeric(ssize[ssize$Set=="11111",2]) - as.numeric(ssize[ssize$Set=="11121",2])) / as.numeric(ssize[ssize$Set=="11111",2])*100`%). 
 Note that the timing-based and the study-level the N-based exclusions are applied in the published article but not in the preprint that appeared in 2019.
 
-```{r klein, include=FALSE}
+```{r klein, include=TRUE}
 rean.12121 <- readRDS("output/reanalysis_12121.rds")
 rean.12121$bfs
 rean.12121$ES
@@ -323,7 +347,7 @@ rean.32121$CI
 
 (1,3,2,1,1), (2,3,2,1,1), and (3,3,2,1,1) from the comment by @chatard2020word. The authors argued that a valid test of the theory as formulated by the original authors would only include the AA-studies. They additionally read the preregistration as stating that only labs that collected data from at least 80 participants would be included in the analysis. Following @klein2022many, they applied the participant-level exclusion criteria only the AA-studies, although in this case that does not matter as all IH-data is excluded anyway. No timing-based exclusion criteria were applied. 
 
-```{r chatard, include=FALSE}
+```{r chatard, include=TRUE}
 rean.12211 <- readRDS("output/reanalysis_12211.rds")
 rean.12211$bfs
 rean.12211$ES
@@ -343,37 +367,40 @@ rean.32211$CI
 ## Summary
 
 ```{r results-hierarchical, results="asis"}
-BFs <- matrix(ncol = 5, nrow = length(keep))
-for(i in seq_along(keep)){
-  BFs[i,] <- readRDS(paste0("output/reanalysis_",keep[i],".rds"))$bfs
+writeCI <- function(x,digits=2){
+  y = paste0(printnum(x[1],digits=digits), 
+             " [", printnum(x[2],digits=digits), ", ", 
+             printnum(x[3],digits=digits),"]")
+  return(y)
 }
-BFs <- round(1/ BFs[, 1:3], 2)
-Ns  <- ssize$`Sample Size`[ssize$Set %in% keep]
-BFs <- cbind(Ns, BFs)
 
 # sets of key analyses
-key.sets <- c("11112","21112","31211",  
-              "12121","22121","32121", 
-              "12211","22211","32211")
-key.sets.labs <- c("11112","21112","31112",  
-              "12121","22121","32121", 
-              "12211","22211","32211")
+key.sets <- c("12121","22121","32121", 
+              "12211","22211","32211",
+              "11112","21112","31211")
+key.sets.labs <- c("12121","22121","32121", 
+                   "12211","22211","32211",
+                   "11112","21112","31112")
 
 BFs <- matrix(ncol = 5, nrow = length(key.sets))
 Ns  <- matrix(ncol = 2, nrow = length(key.sets))
+ES  <- matrix(ncol = 3, nrow = length(key.sets))
 for(i in seq_along(key.sets)){
-  BFs[i,] <- readRDS(paste0("output/reanalysis_",key.sets[i],".rds"))$bfs
-  Ns[i,] <- as.integer(c(ssize$`Sample Size`[ssize$Set==key.sets[i]],ssize$`Number of Studies`[ssize$Set==key.sets[i]]))
+  res <- readRDS(paste0("output/reanalysis_",key.sets[i],"_main.rds"))
+  BFs[i,] <- res$bfs
+  ES[i,]  <- c(res$ES, res$CI)
+  Ns[i,]  <- as.integer(c(ssize$`Sample Size`[ssize$Set==key.sets[i]],ssize$`Number of Studies`[ssize$Set==key.sets[i]]))
 }
 BFs <- round(1/ BFs[, 1:3], 2)
+ES <- apply(ES, 1, writeCI)
 BFs <- data.frame(`Participant-level criterion` = rep(c("All", "White & US-born", "US-Identity $>$ 7"), times = 3),
-                  Ns, BFs)
-colnames(BFs) <- c("Participant-level","Sample size","Labs", "BF$_{0f}$", "BF$_{01}$", "BF$_{0+}$")
+                  Ns, BFs, ES)
+colnames(BFs) <- c("Participant-level","Sample size","Labs", "BF$_{0f}$", "BF$_{01}$", "BF$_{0+}$","Effect [95\\% CI]")
 
 apa_table(BFs, escape = FALSE, 
-          align = c("lccccc"), 
-          stub_indents = list("Inclusive" = 1:3, "Klein et al. (2022)" = 4:6,
-                              "Chatard et al. (2020)" = 7:9),
+          align = c("lcccccc"), 
+          stub_indents = list("Klein et al. (2022)" = 1:3, "Chatard et al. (2020)" = 4:6,
+                              "Current choice" = 7:9), 
           col_spanners = list("Evidence" = c(4,6)),
           caption = "Bayes factors for key analyses.", 
           note = "All Bayes factors are reported in favor of the null model.")
@@ -383,7 +410,7 @@ apa_table(BFs, escape = FALSE,
 ```
 
 We want to create a figure that shows the evidence against heterogeneity on the x-axis and evidence against the effect on the y-axis. The size of the points will reflect N. 
-The effect-evidence will be reflected by a weigthed average (model average) of the common effect and unconstrained effect model. The heterogeneity-evidence will be simple the evidence for the fixed model vs. the unconstrained model.
+The effect-evidence will be reflected by a weighted average (model average) of the common effect and unconstrained effect model. The heterogeneity-evidence will be simply the evidence for the fixed model vs. the unconstrained model.
 
 ```{r fig-functions}
 # plots
@@ -427,11 +454,11 @@ my_theme = function(){
 
 ```
 
-```{r fig-all-bfs}
+```{r fig-all-bfs,  fig.width = 6, fig.heigth = 2, fig.cap="Results from the Bayesian multiverse analysis: Bayes factors in favor of a mortality salience effect are above the horizontal line, Bayes factors against the mortality salience effect are below the horizontal line. All analyses provide evidence against between-study heterogeneity as shown by all heterogeneity Bayes factors are smaller than 1 on the x-axis. The color of the points refers to the different key analyses sets, and the size of the points refers to the number of participants the analysis is based on. The majority of analyses provide evidence against the mortality salience effect."}
 cols <- c(RColorBrewer::brewer.pal(3,"Dark2"),"grey")
 
-bfs.figure = function(set){
- bfs <- readRDS(paste0("output/reanalysis_",set,".rds"))$bfs
+bfs.figure = function(set,priorset){
+ bfs <- readRDS(paste0("output/reanalysis_",set,"_",priorset,".rds"))$bfs
  bfh0 <- bfs['F0']/bfs['10']
  names(bfh0) <- "bfh0"
  bfe0 <- (bfs['10']+bfs['F0'])/2
@@ -439,46 +466,193 @@ bfs.figure = function(set){
  return(c(bfh0,bfe0))
 }
 
-bfs.fig <- data.frame(t(sapply(keep, bfs.figure)))
-bfs.fig$Ns <- as.numeric(ssize$`Sample Size`[match(keep, ssize$Set)])
-bfs.fig$Nscaled <- bfs.fig$Ns/200
-bfs.fig$set <- rownames(bfs.fig)
-bfs.fig$keysets <- case_when(bfs.fig$set %in% key.sets[1:3] ~ "Inclusive", 
-                             bfs.fig$set %in% key.sets[4:6] ~ "Klein et al.",
-                             bfs.fig$set %in% key.sets[7:9] ~ "Chatard et al.",
-                             TRUE ~ "other")
+#samples=keep
+createFig = function(samples,priorset,xbreaks,ybreaks,title,legend=0){
+  bfs.fig <- data.frame(t(sapply(samples, bfs.figure, priorset=priorset)))
+  bfs.fig$Ns <- as.numeric(ssize$`Sample Size`[match(keep, ssize$Set)])
+  bfs.fig$Nscaled <- bfs.fig$Ns/200
+  bfs.fig$set <- rownames(bfs.fig)
+  bfs.fig$keysets <- case_when(bfs.fig$set %in% key.sets[1:3] ~ "Klein et al.", 
+                             bfs.fig$set %in% key.sets[4:6] ~ "Chatard et al.",
+                             bfs.fig$set %in% key.sets[7:9] ~ "Current choice",
+                             TRUE ~ "Other paths")
+  bfs.fig$keysets <- factor(bfs.fig$keysets, levels=c("Chatard et al.","Klein et al.","Current choice","Other paths"))
+  bfs.fig$keysets <- as.factor(bfs.fig$keysets)
+  
+  yrange <- range(ybreaks) # log scale
+  xrange <- range(xbreaks) # log scale
+  
+  # Plot with BF0h on the x-axis, BF0e on the y-axis, colors for
+  # participant exclusion sets and bubble sizes for number of participants included
+  p1 <- bfs.fig %>%
+    arrange(desc(keysets)) %>%
+  ggplot(aes(x = bfh0, y = bfe0, size = Nscaled, color = keysets, alpha = keysets)) +
+    geom_point() +
+    scale_y_continuous(trans='log', limits = yrange, breaks = ybreaks) +
+    scale_x_continuous(trans='log', limits = xrange, breaks = xbreaks) +
+    scale_size_identity() +
+    scale_colour_manual(values=cols, name="Key Analyses") +
+    scale_alpha_manual(values= c(.6,.6,.6,.6), name="Key Analyses") + 
+    labs(x = expression(BF["heterogeneity0"]), y = expression(BF["effect0"])) +
+    geom_hline(yintercept = 1, linetype = "dashed") +
+    geom_vline(xintercept = 1, linetype = "dashed") +
+    theme_apa() +
+    theme_classic(base_size = 16) +
+    theme(axis.line=element_line()) +
+    guides(color = guide_legend(override.aes = list(size = 4))) +
+    coord_capped_cart(gap = 0.1, bottom = 'none', left = 'none') + #caps the axes so they don't touch
+    theme(axis.title.x = element_text(vjust=-0.5),
+          axis.text.x = element_text(vjust=-0.5),
+          axis.text.y = element_text(hjust=.8,),
+          axis.ticks.length = unit(0.25, 'cm'),
+          legend.position = "none"
+          ) +
+    ggtitle(title) +
+    theme(title = element_text(size=13))
+  if(legend==1) p1 <- p1+theme(legend.position = "right")
+  if(legend==2) p1 <- p1+theme(legend.position = c(.25,.35))
+  return(list(p1=p1, bfh0=bfs.fig$bfh0, bfe0=bfs.fig$bfe0))
+}
+
+createFig01 = function(samples,priorset,xbreaks,ybreaks,title,legend=0){
+  bfs.fig <- data.frame(t(sapply(samples, bfs.figure, priorset=priorset)))
+  bfs.fig <- 1/bfs.fig
+  bfs.fig$Ns <- as.numeric(ssize$`Sample Size`[match(keep, ssize$Set)])
+  bfs.fig$Nscaled <- bfs.fig$Ns/200
+  bfs.fig$set <- rownames(bfs.fig)
+  bfs.fig$keysets <- case_when(bfs.fig$set %in% key.sets[1:3] ~ "Klein et al.", 
+                             bfs.fig$set %in% key.sets[4:6] ~ "Chatard et al.",
+                             bfs.fig$set %in% key.sets[7:9] ~ "Current choice",
+                             TRUE ~ "Other paths")
+  bfs.fig$keysets <- factor(bfs.fig$keysets, levels=c("Chatard et al.","Klein et al.","Current choice","Other paths"))
+  bfs.fig$keysets <- as.factor(bfs.fig$keysets)
+  
+  yrange <- range(ybreaks) # log scale
+  xrange <- range(xbreaks) # log scale
+  
+  # Plot with BF0h on the x-axis, BF0e on the y-axis, colors for
+  # participant exclusion sets and bubble sizes for number of participants included
+  p1 <- bfs.fig %>%
+    arrange(desc(keysets)) %>%
+  ggplot(aes(x = bfh0, y = bfe0, size = Nscaled, color = keysets, alpha = keysets)) +
+    geom_point() +
+    scale_y_continuous(trans='log', limits = yrange, breaks = ybreaks) +
+    scale_x_continuous(trans='log', limits = xrange, breaks = xbreaks) +
+    scale_size_identity() +
+    scale_colour_manual(values=cols, name="Key Analyses") +
+    scale_alpha_manual(values= c(.6,.6,.6,.6), name="Key Analyses") + 
+    labs(x = expression(BF["heterogeneity0"]), y = expression(BF["effect0"])) +
+    geom_hline(yintercept = 1, linetype = "dashed") +
+    geom_vline(xintercept = 1, linetype = "dashed") +
+    theme_apa() +
+    theme_classic(base_size = 16) +
+    theme(axis.line=element_line()) +
+    guides(color = guide_legend(override.aes = list(size = 4))) +
+    coord_capped_cart(gap = 0.1, bottom = 'none', left = 'none') + #caps the axes so they don't touch
+    theme(axis.title.x = element_text(vjust=-0.5),
+          axis.text.x = element_text(vjust=-0.5),
+          axis.text.y = element_text(hjust=.8,),
+          axis.ticks.length = unit(0.25, 'cm'),
+          legend.position = "none"
+          ) +
+    ggtitle(title) +
+    theme(title = element_text(size=13))
+  if(legend==1) p1 <- p1+theme(legend.position = "right")
+  if(legend==2) p1 <- p1+theme(legend.position = c(.25,.35))
+  return(list(p1=p1, bfh0=bfs.fig$bfh0, bfe0=bfs.fig$bfe0))
+}
 
 
-yrange <- c(1/100, 5) # log scale
-xrange <- c(1/10, 1) # log scale
+p1 <- createFig(keep,"main", xbreaks = c(1/10, 1/5, 1), ybreaks = c(1/50, 1/10, 1/5, 1, 5), title = "", legend = 1)
+p2 <- createFig(keep,"small_littleVar", xbreaks = c(1/50,1/10, 1/5, 1,2), ybreaks = c(1/50, 1/10, 1/5, 1, 5), title = "Prior setting: small effect, little variance", legend=2)
+p3 <- createFig(keep,"small_muchVar", xbreaks = c(1/50,1/10, 1/5, 1,2), ybreaks = c(1/50, 1/10, 1/5, 1, 5), title = "Prior setting: small effect, much variance")
+p4 <- createFig(keep,"large_littleVar", xbreaks = c(1/50,1/10, 1/5, 1,2), ybreaks = c(1/50, 1/10, 1/5, 1, 5), title = "Prior setting: medium effect, little variance")
+p5 <- createFig(keep,"large_muchVar", xbreaks = c(1/50,1/10, 1/5, 1,2), ybreaks = c(1/50, 1/10, 1/5, 1, 5), title = "Prior setting: medium effect, much variance")
 
-# Plot with BF0h on the x-axis, BF0e on the y-axis, colors for
-# participant exclusion sets and bubble sizes for number of participants included
-p1 <- bfs.fig %>%
-  arrange(desc(keysets)) %>%
-ggplot(aes(x = bfh0, y = bfe0, size = Nscaled, color = keysets, alpha = keysets)) +
-  geom_point() +
-  scale_y_continuous(trans='log', limits = yrange, breaks = c(1/100, 1/50, 1/5, 1, 5)) +
-  scale_x_continuous(trans='log', limits = xrange, breaks = c(1/10, 1/5, 1)) +
-  scale_size_identity() +
-  scale_colour_manual(values=cols, name="Key analyses") +
-  scale_alpha_manual(values= c(.6,.6,.6,.3), name="Key Analyses") + 
-  labs(x = expression(BF["heterogeneity0"]), y = expression(BF["effect0"])) +
-  geom_hline(yintercept = 1, linetype = "dashed") +
-  geom_vline(xintercept = 1, linetype = "dashed") +
-  theme_apa() +
-  theme_classic(base_size = 16) +
-  theme(axis.line=element_line()) +
-  guides(color = guide_legend(override.aes = list(size = 4))) +
-  coord_capped_cart(gap = 0.1, bottom = 'none', left = 'none') + #caps the axes so they don't touch
-  theme(axis.title.x = element_text(vjust=-0.5),
-        axis.text.x = element_text(vjust=-0.5),
-        axis.text.y = element_text(hjust=.8,),
-        axis.ticks.length = unit(0.25, 'cm'),
-        legend.position = "none"
-        )
+p1$p1
 ```
 
+Add arrows to the figures with different prior settings to reflect the general trend relative to the main results. 
+
+```{r prior-figs, fig.width = 10.5, fig.height = 8, fig.cap="Results from the Bayesian multiverse analysis under different prior settings for the overall effect and the between-study variance in the effect. The arrows show the overall trend relative to the main analysis with the primary prior settings."}
+library(grid)
+p.1 <- p2$p1 + annotate("segment", x = .25, xend = .4, y = .05, yend = .15,
+           colour = "grey36", size = 1.5, arrow = arrow())
+p.2 <- p3$p1 + annotate("segment", x = .4, xend = .25, y = .05, yend = .15,
+           colour = "grey36", size = 1.5, arrow = arrow())
+p.3 <- p4$p1 + annotate("segment", x = .13, xend = .2, y = .5, yend = .18,
+           colour = "grey36", size = 1.5, arrow = arrow())
+p.4 <- p5$p1 + annotate("segment", x = .45, xend = .3, y = .5, yend = .18,
+           colour = "grey36", size = 1.5, arrow = arrow())
+
+
+cowplot::plot_grid(p.1,p.2,p.3,p.4, ncol=2, labels = letters)
+
+sum(p2$bfh0>1)+sum(p3$bfh0>1)+sum(p4$bfh0>1)+sum(p5$bfh0>1)
+sum(p2$bfe0>1)+sum(p3$bfe0>1)+sum(p4$bfe0>1)+sum(p5$bfe0>1)
+(sum(p2$bfh0>1)+sum(p3$bfh0>1)+sum(p4$bfh0>1)+sum(p5$bfh0>1))/(45*4)*100
+(sum(p2$bfe0>1)+sum(p3$bfe0>1)+sum(p4$bfe0>1)+sum(p5$bfe0>1))/(45*4)*100
+```
+
+```{r priors-tab}
+#to do: adjust table: one pplevel and all three models. 
+
+prior.sets <- c("main","small_littleVar","small_muchVar","large_littleVar","large_muchVar")
+BFs01 <- BFs0f <- BFs0p <- matrix(nrow = length(prior.sets), ncol = length(key.sets))
+for(i in seq_along(key.sets)){
+  for(j in seq_along(prior.sets)){
+    m <- readRDS(paste0("output/reanalysis_",key.sets[i],"_",prior.sets[j],".rds"))
+    BFs01[j,i] <- 1/m$bfs['10']
+    BFs0f[j,i] <- 1/m$bfs['F0']
+    BFs0p[j,i] <- 1/m$bfs['P0']
+  }
+}
+
+#old
+BFsOLD <- data.frame(scaleV = rep(c(.4,.2,.2,.6,.6),times=3), 
+                  scaleE = rep(c(.24,.12,.48,.12,.48), times=3),
+                  BF01a = c(BFs01[,c(1,4,7)]), BF0fa = c(BFs0f[,c(1,4,7)]),
+                  BF01b = c(BFs01[,c(2,5,8)]), BF0fb = c(BFs0f[,c(2,5,8)]),
+                  BF01c = c(BFs01[,c(3,6,9)]), BF0fc = c(BFs0f[,c(3,6,9)]))
+#BFs[,3:8] <- round(BFs[, 3:8], 2)
+#colnames(BFs) <- c("scale on $\\mu_\\theta$","scale on $\\sigma^2_\\theta$",rep(c("BF$_{01}$","BF$_{0f}$"),times=3))
+
+#new
+BFs <- data.frame(scaleV = rep(c(.4,.2,.2,.6,.6),times=3), 
+                  scaleE = rep(c(.24,.12,.48,.12,.48), times=3),
+                  BF01 = c(BFs01[,c(1,4,7)]), BF0f = c(BFs0f[,c(1,4,7)]),
+                  BF0p = c(BFs0p[,c(1,4,7)]))
+BFs[,3:5] <- round(BFs[, 3:5], 2)
+colnames(BFs) <- c("scale on $\\mu_\\theta$","scale on $\\sigma^2_\\theta$","BF$_{01}$","BF$_{0f}$","BF$_{0+}$")
+
+
+apa_table(BFs, escape = FALSE, 
+          align = c("lcrrr"), 
+          stub_indents = list("Klein et al. (2022)" = 1:5, "Chatard et al. (2020)" = 6:10,
+                              "Current choice" = 11:15),
+          #col_spanners = list("All" = c(3,4), "White \\& US-born" = c(5,6), "US-Identity $>$ 7" = c(7,8)),
+          caption = "Bayes factors for key analyses (participant-level exclusion set 1) under different prior settings.", 
+          note = "All Bayes factors are reported in favor of the null model.")
+
+#Number of paths with effect BF>1
+sum(BFsOLD[,c(3,5,7)]<1)
+#Percentage of paths with effect BF>1
+sum(BFsOLD[,c(3,5,7)]<1)/(15*3)*100
+#Number of paths with heterogeneity BF>1
+sum(BFsOLD[,c(4,6,8)]<1)
+```
+
+
+```{r range-es}
+effectsizes = function(set){
+ es <- readRDS(paste0("output/reanalysis_",set,".rds"))$ES
+}
+
+ess <- sapply(keep, effectsizes)
+range(ess)
+```
+
+## Bayesian Model-average Meta-analysis
 
 ```{r priors}
 default.prior     <- prior(family = "t",
@@ -515,7 +689,7 @@ priors <- list(default = default.prior,
   return(BFheterogeneity)
 }
 
-.runRema <- function(set, priors, extrainfo = TRUE){
+.runRema <- function(set, priors, extrainfo = TRUE, return_output=FALSE){
 # Returns a list containing:
 # BFmu: dataframe with 1 row/3columns (BF per prior)
 # BFtau: dataframe with 1 row/3columns (BF per prior)
@@ -567,7 +741,11 @@ priors <- list(default = default.prior,
                        est = est,
                        m.est = m.est
                        )
-    saveRDS(remaResult, file = paste0("output/metaanalysis_",set,".rds"))
+    if(return_output){
+      return(remaResult$m.est$default)
+    } else {
+      saveRDS(remaResult, file = paste0("output/metaanalysis_",set,".rds"))
+    }
 }
 
 
@@ -593,14 +771,21 @@ colnames(BFs) <- c("Participant-level","Sample size","Labs", "Default", "Oosterw
 
 apa_table(BFs, escape = FALSE, 
           align = c("lcccccc"), 
-          stub_indents = list("Inclusive" = 1:3, "Klein et al. (2022)" = 4:6,
-                              "Chatard et al. (2020)" = 7:9),
+          stub_indents = list("Klein et al. (2022)" = 1:3,
+                              "Chatard et al. (2020)" = 4:6, "Current choice" = 7:9),
           col_spanners = list("Effect BF$_{01}$" = c(4,6), "Heterogeneity BF$_{01}$" = c(7,7)),
           caption = "Bayes factors for key analyses.", 
           note = "All Bayes factors are reported in favor of the null model. The different column names for the effect BF$_{01}$ refer to the different priors used.")
+
+
+for(i in seq_along(key.sets)){
+  m <- readRDS(paste0("output/metaanalysis_",key.sets[i],".rds"))
+  est.default <- m$m.est$default
+  print(est.default)
+}
 ```
 
-```{r fig-all-bfs-meta, fig.width = 8, fig.heigth = 6, fig.cap="Results from the multiverse analysis: Bayes factors in favor of a mortality salience effect are above the horizontal line, Bayes factors against the mortality salience effect are below the horizontal line. Panel **A.** shows the evidence obtained from the hierarchical analyses and panel **B.** shows the evidence obtained from the model-averaged meta-analysis. All analyses provide evidence against between-study heterogeneity as shown by all heterogeneity Bayes factors are smaller than 1 on the x-axis. The color of the points refers to the different key analyses sets, the shape of the points refers the different prior setting in the meta-analysis, and the size of the points refers to the number of participants the analysis is based on. The majority of analyses provide evidence against the mortality salience effect."}
+```{r fig-all-bfs-meta, fig.width = 6, fig.height = 4, fig.cap="Results from the multiverse analysis for the model-averaged meta-analysis: Bayes factors in favor of a mortality salience effect are above the horizontal line, Bayes factors against the mortality salience effect are below the horizontal line. All analyses provide evidence against between-study heterogeneity as shown by all heterogeneity Bayes factors are smaller than 1 on the x-axis. The color of the points refers to the different key analyses sets, the shape of the points refers the different prior setting in the meta-analysis, and the size of the points refers to the number of participants the analysis is based on. The majority of analyses provide evidence against the mortality salience effect."}
 cols <- c(RColorBrewer::brewer.pal(3,"Dark2"),"grey")
 
 bfs.figure = function(set){
@@ -616,10 +801,12 @@ bfs.fig <- data.frame(t(sapply(keep, bfs.figure)))
 bfs.fig$Ns <- as.numeric(ssize$`Sample Size`[match(keep, ssize$Set)])
 bfs.fig$Nscaled <- bfs.fig$Ns/200
 bfs.fig$set <- rownames(bfs.fig)
-bfs.fig$keysets <- case_when(bfs.fig$set %in% key.sets[1:3] ~ "Inclusive", 
-                             bfs.fig$set %in% key.sets[4:6] ~ "Klein et al.",
-                             bfs.fig$set %in% key.sets[7:9] ~ "Chatard et al.",
-                             TRUE ~ "other")
+bfs.fig$keysets <- case_when(bfs.fig$set %in% key.sets[1:3] ~ "Klein et al.", 
+                             bfs.fig$set %in% key.sets[4:6] ~ "Chatard et al.",
+                             bfs.fig$set %in% key.sets[7:9] ~ "Current choice",
+                             TRUE ~ "Other paths")
+bfs.fig$keysets <- factor(bfs.fig$keysets, levels=c("Chatard et al.","Klein et al.","Current choice","Other paths"))
+bfs.fig$keysets <- as.factor(bfs.fig$keysets)
 bfs.fig <- tidyr::pivot_longer(bfs.fig, cols = tau_Default:effect_Vohs, names_to = c(".value","prior"), names_sep = "_")
 
 yrange <- c(1/100, 5) # log scale
@@ -635,7 +822,7 @@ ggplot(aes(x = tau, y = effect, size = Nscaled, color = keysets, alpha=keysets, 
   scale_x_continuous(trans='log', limits = xrange, breaks = c(1/10, 1/5, 1)) +
   scale_size_identity() +
   scale_colour_manual(values=cols, name="Key Analyses") +
-  scale_alpha_manual(values= c(.6,.6,.6,.3), name="Key Analyses") + 
+  scale_alpha_manual(values= c(.6,.6,.6,.6), name="Key Analyses") + 
   scale_shape_manual(values = c(19,15,17), name = "Prior") +
   labs(x = expression(BF["heterogeneity0"]), y = expression(BF["effect0"])) +
   geom_hline(yintercept = 1, linetype = "dashed") +
@@ -658,32 +845,57 @@ legend <- get_legend(
              legend.text = element_text(size=10),
              legend.title = element_text(size=12))
 )
-cowplot::plot_grid(p1,p2+theme(legend.position = "none"),legend, nrow=1, rel_widths = c(.42,.42,.18), 
-                   labels = c("A.","B."))
+p2
 ```
 
-We also want to include some forest plots. Let's do our most inclusive one (set 11112), Klein et al.'s primary one (set 12121) and Chatard et al.'s chosen one (set 33211). We want these for both the hierarchical analysis and the meta-analysis. 
+For the estimation, we want to rerun the models for the key sets, but without truncated priors (to allow an effect size below zero). 
 
+```{r ests-metaanalyses, cache=TRUE, eval=TRUE}
+
+default.prior     <- prior(family = "t",
+                           param = c(0, 0.707, 1)
+                           )
+
+oosterwijk.prior  <- prior(family = "t",
+                           param = c(0.35, 0.102, 3)
+                           )
+
+vohs.prior        <- prior(family = "norm",
+                           param = c(0.3, 0.15)
+                           )
+
+priors.untrunc <- list(default = default.prior,
+                       oosterwijk = oosterwijk.prior,
+                       vohs = vohs.prior
+                       )
+
+#adjust to just get estimates (and not save as new files!)
+ests <- vector("list",length = length(key.sets))
+ests <- sapply(key.sets, function(x) .runRema(x, priors=priors.untrunc,return_output = TRUE))
+apply(ests, 1, function(x) round(x, digits = 2))
+```
+
+## Forest Plots 
 
 ```{r re-fig-all, echo = F}
-forest.all <- function(set, legend.pos){
+forest.levels <- function(sets, legend.pos, relwidths, cols){
 # Returns a forest plot with observed and estimated effects
   
-  obs.data <- read.csv(file = paste0("data/update/reanalysis_", set, ".csv"), header = TRUE)
-  es.data  <- read.csv(file = paste0("data/update/metaset_", set, ".csv"), header = TRUE)
-  est.averaging <- readRDS(file = paste0("output/metaanalysis_",set,".rds"))$est$default
-  est.multilevel <- readRDS(file = paste0("output/reanalysis_",set,".rds"))$effects
+  for(i in 1:length(sets)){
+    obs.data <- read.csv(file = paste0("data/update/reanalysis_", sets[i], ".csv"), header = TRUE)
+    est.multilevel <- readRDS(file = paste0("output/reanalysis_",sets[i],".rds"))$effects
   
-  # add pretty labels
-  source <- es.data$source
-  es.data$labelpretty <- case_when(source == "ufl" ~ "University of Florida",
+    if(i==1){
+      # add pretty labels
+      source <- obs.data$source
+      obs.data$labelpretty <- case_when(source == "ufl" ~ "University of Florida",
                                              source == "occid" ~ "Occidental College",
                                              source == "ashland" ~ "Ashland University",
                                              source == "ithaca" ~ "Ithaca College",
                                              source == "riverside" ~ "University of California, Riverside",
                                              source == "wesleyan_inhouse" ~ "Wesleyan University",
-                                             source == "uwmadison_expert" ~ "University of Wisconsin",
-                                             source == "uwmadison_inhouse" ~ "University of Wisconsin",
+                                             source == "uwmadison_expert" ~ "University of Wisconsin - AA",
+                                             source == "uwmadison_inhouse" ~ "University of Wisconsin - IH",
                                              source == "vcu" ~ "Virginia Commonwealth University",
                                              source == "sou_inhouse" ~ "Southern Oregon University",
                                              source == "plu" ~ "Pacific Lutheran University",
@@ -692,51 +904,51 @@ forest.all <- function(set, legend.pos){
                                              source == "cnj" ~ "The College of New Jersey",
                                              source == "wpi" ~ "Worcester Polytechnic Institute",
                                              source == "illinois" ~ "University of Illinois",
-                                             source == "kansas_expert" ~ "University of Kansas",
-                                             source == "kansas_inhouse" ~ "University of Kansas",
+                                             source == "kansas_expert" ~ "University of Kansas - AA",
+                                             source == "kansas_inhouse" ~ "University of Kansas - IH",
                                              source == "upenn" ~ "University of Pennsylvania",
-                                             source == "pace_inhouse" ~ "Pace University",
-                                             source == "pace_expert" ~ "Pace University")
+                                             source == "pace_inhouse" ~ "Pace University - IH",
+                                             source == "pace_expert" ~ "Pace University- AA")
+      I <- length(unique(obs.data$source))
+    }
+    
+    obs.data$sourcef <- factor(obs.data$source, levels = unique(obs.data$source))
+    meansbycondloc <- with(obs.data, tapply(pro_minus_anti, list(sourcef, ms_condition), mean, na.rm = TRUE))
+    obs.effects <- meansbycondloc[, 1] - meansbycondloc[, 2]
+    obs.ci <- t(sapply(unique(obs.data$source)
+                          , function(x) t.test(obs.data$pro_minus_anti[obs.data$source==x] ~ obs.data$ms_condition[obs.data$source==x], var.equal = T)$conf.int))
+    pm.effects <- colMeans(est.multilevel) 
+    names(pm.effects) <- names(obs.effects)
+    est.ci <- t(apply(est.multilevel, 2, quantile, probs = c(.025, .975)))
+    rownames(est.ci) <- rownames(obs.ci)
+    
+    if(i==1){
+      ord <- order(obs.effects)
+      lab.multiord <- unique(obs.data$source)
+      ordmulti <- lab.multiord[ord]
+      studyLabels <- unique(obs.data$labelpretty)[ord]
+      
+      y.obs.es <- I:1
+      y.est.es <- rev(seq(.6, I - .4, 1))
   
-  I <- nrow(es.data)
-  ord <- order(es.data$yi) #everything is sorted by effect size
-  labord <- es.data$source[ord]
-  es <- es.data$yi[ord]
-  est.es <- est.averaging[ord, "est.es"]
-  est.lower.es <- est.averaging[ord, "est.lower"]
-  est.upper.es <- est.averaging[ord, "est.upper"]
-  studyLabels <- es.data[ord, "labelpretty"]  
-
-  lower.es <- es - qnorm(1 - .05/2) * es.data$sei 
-  upper.es <- es + qnorm(1 - .05/2) * es.data$sei
-
-  y.obs.es <- I:1
-  y.est.es <- rev(seq(.6, I - .4, 1))
-
-  dfBoth.av <- data.frame(es = c(es, est.es),
-                       y = c(y.obs.es, y.est.es),
-                       studyLabels = c(studyLabels, studyLabels),
-                       lower = c(lower.es, est.lower.es), upper = c(upper.es, est.upper.es),
-                       g = rep(c("Observed", "Estimated"), each = I)
-                       )
-  
-  obs.data$sourcef <- factor(obs.data$source, levels = unique(obs.data$source))
-  meansbycondloc <- with(obs.data, tapply(pro_minus_anti, list(sourcef, ms_condition), mean, na.rm = TRUE))
-  obs.effects <- meansbycondloc[, 1] - meansbycondloc[, 2]
-  obs.ci <- t(sapply(unique(obs.data$source)
-                          , function(x) t.test(obs.data$pro_minus_anti[obs.data$source==x] ~ obs.data$ms_condition[obs.data$source==x]
-                                               , var.equal = T)$conf.int))
-  pm.effects <- colMeans(est.multilevel) 
-  est.ci <- t(apply(est.multilevel, 2, quantile, probs = c(.025, .975)))
-  lab.multiord <- unique(obs.data$source)
-  ordmulti <- match(labord, lab.multiord)
-
-  dfBoth.mu <- data.frame(effectSize = c(obs.effects[ordmulti], pm.effects[ordmulti]),
+      dfBoth.mu <- data.frame(effectSize = c(obs.effects[ordmulti], pm.effects[ordmulti]),
                      y = c(y.obs.es, y.est.es),
                      studyLabels = c(studyLabels, studyLabels),
-                     lower = c(obs.ci[ordmulti, 1], est.ci[ordmulti, 1]), 
-                     upper = c(obs.ci[ordmulti, 2], est.ci[ordmulti, 2]),
+                     lower = c(obs.ci[,1][ordmulti], est.ci[,1][ordmulti]), 
+                     upper = c(obs.ci[,2][ordmulti], est.ci[,2][ordmulti]),
                      g = rep(c("Observed", "Estimated"), each = I))
+    }
+    if(i==2){
+      dfBoth.mu$effectSize2 <- c(obs.effects[ordmulti], pm.effects[ordmulti])
+      dfBoth.mu$lower2 <- c(obs.ci[,1][ordmulti], est.ci[,1][ordmulti]) 
+      dfBoth.mu$upper2 <- c(obs.ci[,2][ordmulti], est.ci[,2][ordmulti])
+    }
+    if(i==3){
+      dfBoth.mu$effectSize3 <- c(obs.effects[ordmulti], pm.effects[ordmulti])
+      dfBoth.mu$lower3 <- c(obs.ci[,1][ordmulti], est.ci[,1][ordmulti]) 
+      dfBoth.mu$upper3 <- c(obs.ci[,2][ordmulti], est.ci[,2][ordmulti])
+    }
+  }
     
   plot.mu <-  ggplot2::ggplot(dfBoth.mu, ggplot2::aes(x = effectSize, y = y, shape=g, color=g)) +
            ggplot2::geom_vline(xintercept = 0, linetype = "dotted") +
@@ -744,13 +956,13 @@ forest.all <- function(set, legend.pos){
            ggplot2::geom_errorbarh(ggplot2::aes(xmin = lower
                                                , xmax = upper, colour = g)
                                   , height = .3, show.legend = FALSE, size = .8) +
-           ggplot2::scale_y_continuous(breaks = I:1, labels = rep(" ", I),
+           ggplot2::scale_y_continuous(breaks = I:1, labels = as.character(studyLabels),
                                     expand = c(0, 0.5)) +
-           ggplot2::scale_color_manual("", values = c("black", "slategrey"), labels = c("Estimated", "Observed")) +
+           ggplot2::scale_color_manual("", values = cols, labels = c("Estimated", "Observed")) +
            ggplot2::scale_shape_manual("", values = c(16, 15)) +
            ggplot2::guides(shape = ggplot2::guide_legend(reverse=TRUE, override.aes = list(size=3))
                            , colour = ggplot2::guide_legend(reverse=TRUE)) +
-           ggplot2::theme(axis.text.y.right = ggplot2::element_text(colour = c(rep(c("slategrey", "black"), each = I)))) +
+           ggplot2::theme(axis.text.y.right = ggplot2::element_text(colour = c(rep(cols, each = I)))) +
            ggplot2::xlab("Unstandardized \n Effect") +
            ggplot2::scale_x_continuous(breaks = seq(from = min(round(dfBoth.mu$lower, digits=0)), 
                                                     to = max(round(dfBoth.mu$upper, digits=0)), by=1)) + 
@@ -760,48 +972,108 @@ forest.all <- function(set, legend.pos){
            theme(axis.line.y = element_blank(),
                  axis.ticks.y = element_blank(),
                  legend.margin = margin(t = 0, unit='cm'),
-                 legend.position = if(legend.pos == 2){c(0.01, 0.15)}else{"none"})
-
-  plot.av <- ggplot(dfBoth.av, aes(x = es, y = y, shape=g, color=g)) +
-        geom_vline(xintercept = 0, linetype = "dotted") +
-        geom_point(size = 3) +
-        ggplot2::geom_errorbarh(ggplot2::aes(xmin = lower
-                                               , xmax = upper, colour = g)
-                                  , height = .3, show.legend = FALSE, size = .8) +
-        scale_y_continuous(breaks = I:1, labels = as.character(studyLabels),
-                                    expand = c(0, 0.5)) +
-        scale_color_manual("", values = c("black", "slategrey"), 
-                                    labels = c(gettext("Estimated"), gettext("Observed"))) +
-        scale_shape_manual("", values = c(16, 15)) +
-        guides(shape = guide_legend(reverse=TRUE, override.aes = list(size=3)), 
-               colour = guide_legend(reverse=TRUE))  +
-        xlab("Standardized \n Effect") +
-        ggplot2::scale_x_continuous(breaks = seq(from = min(round(dfBoth.av$lower, digits=0)), 
-                                                    to = max(round(dfBoth.av$upper, digits=0)), by=.5)) + 
-        base_breaks_x(round(range(c(dfBoth.av$lower,dfBoth.av$upper)), digits = 0)) + 
-        ylab(" ") +
-        my_theme() + 
-        theme(axis.line.y = element_blank(),
-              axis.ticks.y = element_blank(),
-              legend.position = if(legend.pos == 1){c(0.8, 1)}else{"none"})
-    
+                 legend.position = if(legend.pos == 2){c(0.25, 0.15)}else{"none"},
+                 plot.margin = margin(l=0,unit='cm'))
   
-  cowplot::plot_grid(plot.av, plot.mu, labels=c("A.","B."),
-                     ncol = 2, rel_widths = c(.62,.38))
+  plot.mu2 <- ggplot2::ggplot(dfBoth.mu, ggplot2::aes(x = effectSize2, y = y, shape=g, color=g)) +
+           ggplot2::geom_vline(xintercept = 0, linetype = "dotted") +
+           ggplot2::geom_point(size = 3) +
+           ggplot2::geom_errorbarh(ggplot2::aes(xmin = lower2
+                                               , xmax = upper2, colour = g)
+                                  , height = .3, show.legend = FALSE, size = .8) +
+           ggplot2::scale_y_continuous(breaks = I:1, labels = rep("",I),
+                                    expand = c(0, 0.5)) +
+           ggplot2::scale_color_manual("", values = cols, labels = c("Estimated", "Observed")) +
+           ggplot2::scale_shape_manual("", values = c(16, 15)) +
+           ggplot2::guides(shape = ggplot2::guide_legend(reverse=TRUE, override.aes = list(size=3))
+                           , colour = ggplot2::guide_legend(reverse=TRUE)) +
+           ggplot2::theme(axis.text.y.right = ggplot2::element_text(colour = c(rep(cols, each = I)))) +
+           ggplot2::xlab("Unstandardized \n Effect") +
+           ggplot2::scale_x_continuous(breaks = seq(from = min(round(dfBoth.mu$lower2, digits=0),na.rm = TRUE), 
+                                                    to = max(round(dfBoth.mu$upper2, digits=0),na.rm = TRUE), by=1)) + 
+           base_breaks_x(round(range(c(dfBoth.mu$lower2,dfBoth.mu$upper2),na.rm = TRUE), digits = 0)) + 
+           ggplot2::ylab(" ") +
+           my_theme() + 
+           theme(axis.line.y = element_blank(),
+                 axis.ticks.y = element_blank(),
+                 legend.margin = margin(t = 0, unit='cm'),
+                 legend.position = "none",
+                 plot.margin = margin(l=0,unit='cm'))
+  
+    plot.mu3 <- ggplot2::ggplot(dfBoth.mu, ggplot2::aes(x = effectSize3, y = y, shape=g, color=g)) +
+           ggplot2::geom_vline(xintercept = 0, linetype = "dotted") +
+           ggplot2::geom_point(size = 3) +
+           ggplot2::geom_errorbarh(ggplot2::aes(xmin = lower3
+                                               , xmax = upper3, colour = g)
+                                  , height = .3, show.legend = FALSE, size = .8) +
+           ggplot2::scale_y_continuous(breaks = I:1, labels = rep("",I),
+                                    expand = c(0, 0.5)) +
+           ggplot2::scale_color_manual("", values = cols, labels = c("Estimated", "Observed")) +
+           ggplot2::scale_shape_manual("", values = c(16, 15)) +
+           ggplot2::guides(shape = ggplot2::guide_legend(reverse=TRUE, override.aes = list(size=3))
+                           , colour = ggplot2::guide_legend(reverse=TRUE)) +
+           ggplot2::theme(axis.text.y.right = ggplot2::element_text(colour = c(rep(cols, each = I)))) +
+           ggplot2::xlab("Unstandardized \n Effect") +
+           ggplot2::scale_x_continuous(breaks = seq(from = min(round(dfBoth.mu$lower3, digits=0),na.rm = TRUE), 
+                                                    to = max(round(dfBoth.mu$upper3, digits=0),na.rm = TRUE), by=1)) + 
+           base_breaks_x(round(range(c(dfBoth.mu$lower3,dfBoth.mu$upper3),na.rm = TRUE), digits = 0)) + 
+           ggplot2::ylab(" ") +
+           my_theme() + 
+           theme(axis.line.y = element_blank(),
+                 axis.ticks.y = element_blank(),
+                 legend.margin = margin(t = 0, unit='cm'),
+                 legend.position = "none",
+                 plot.margin = margin(l=0,unit='cm'))
+
+  cowplot::plot_grid(plot.mu, plot.mu2, plot.mu3, labels=c("A.","B.","C."),
+                     ncol = 3, rel_widths = relwidths)
 }
+
 ```
 
-```{r forests-11112, fig.width=10, fig.height=7, warning=FALSE, fig.cap="Forest plot with Bayesian parameter estimates for the most inclusive dataset featuring participant-level exclusion set 1 (applied to all participants) for all studies and all complete data. **A.** Bayesian meta-analysis (with two-sided default prior). The grey points represent calculated effect sizes with 95% confidence intervals, the black points represent estimated effect sizes from the random-effects alternative model with 95% credible intervals. **B.** Bayesian hierarchical analysis. The grey points represent unstandardized observed effects for each study with 95% confidence intervals. The black points represent estimated unstandardized effects from the unconstrained model with 95% credible intervals."}
-forest.all(set="11112", legend.pos = 2)
+```{r forests-klein, fig.width=10, fig.height=7, warning=FALSE, fig.cap="Forest plot with Bayesian parameter estimates for the key analyses by Klein et al. for the three participant-level exclusion sets (applied to AA-participants only) with data collected after the lead team posted their preregistration, and only studies that featured more than 60 observations. **A.** Participant-level exclusion set 1. The grey points represent unstandardized observed effects for each study with 95% confidence intervals. The black points represent estimated unstandardized effects from the unconstrained model with 95% credible intervals. **B.** Participant-level exclusion set 2. **C.** Participant-level exclusion set 3."}
+colrs <- c(cols[2], colorspace::lighten(cols[2],.5))
+forest.levels(sets=c("12121","22121","32121"), legend.pos = 2, relwidths = c(.44,.25,.28), cols = colrs)
 ```
 
-```{r forests-12121, fig.width=10, fig.height=6, warning=FALSE, fig.cap="Forest plot with Bayesian parameter estimates for the critical analysis from Klein et al. (2022) featuring participant-level exclusion set 1 (only applied to AA-protocols) for studies with more than 60 particpants and excluding observation collected prior to the analysis preregistration date. **A.** Bayesian meta-analysis (with two-sided default prior). The grey points represent calculated effect sizes with 95% confidence intervals, the black points represent estimated effect sizes from the random-effects alternative model with 95% credible intervals. **B.** Bayesian hierarchical analysis. The grey points represent unstandardized observed effects for each study with 95% confidence intervals. The black points represent estimated unstandardized effects from the unconstrained model with 95% credible intervals."}
-forest.all(set="12121", legend.pos = 2)
+```{r forests-chatard, fig.width=10, fig.height=4, warning=FALSE, fig.cap="Forest plot with Bayesian parameter estimates for the key analyses by Chatard et al. for the three participant-level exclusion sets, only studies that featured more than 80 observations, and for AA-labs only. **A.** Participant-level exclusion set 1. The grey points represent unstandardized observed effects for each study with 95% confidence intervals. The black points represent estimated unstandardized effects from the unconstrained model with 95% credible intervals. **B.** Participant-level exclusion set 2. **C.** Participant-level exclusion set 3."}
+colrs <- c(cols[1], colorspace::lighten(cols[1],.5))
+forest.levels(sets=c("12211","22211","32211"), legend.pos = 0, relwidths = c(.4,.27,.32), cols = colrs)
 ```
 
-```{r forests-12211, fig.width=10, fig.height=4, warning=FALSE, fig.cap="Forest plot with Bayesian parameter estimates for the critical analysis from Chatard et al. (2020) featuring participant-level exclusion set 3 for studies with more than 80 particpants and only author-advised studies included. **A.** Bayesian meta-analysis (with two-sided default prior). The grey points represent calculated effect sizes with 95% confidence intervals, the black points represent estimated effect sizes from the random-effects alternative model with 95% credible intervals. **B.** Bayesian hierarchical analysis. The grey points represent unstandardized observed effects for each study with 95% confidence intervals. The black points represent estimated unstandardized effects from the unconstrained model with 95% credible intervals."}
-forest.all(set="12211", legend.pos = 2)
+```{r forests-us, fig.width=10, fig.height=8, warning=FALSE, fig.cap="Forest plot with Bayesian parameter estimates for the key analyses of our choice for the three participant-level exclusion sets (applied to both AA- and IH-participants), including all participants and all labs. **A.** Participant-level exclusion set 1. The grey points represent unstandardized observed effects for each study with 95% confidence intervals. The black points represent estimated unstandardized effects from the unconstrained model with 95% credible intervals. **B.** Participant-level exclusion set 2. **C.** Participant-level exclusion set 3."}
+colrs <- c(cols[3], colorspace::lighten(cols[3],.5))
+forest.levels(sets=c("11112","21112","31211"), legend.pos = 0, relwidths = c(.44,.27,.28), cols = colrs)
 ```
+
+# Robustness Checks
+
+```{r robusttable}
+BFs <- matrix(ncol = 5, nrow = length(key.sets))
+Ns  <- matrix(ncol = 2, nrow = length(key.sets))
+ES  <- matrix(ncol = 3, nrow = length(key.sets))
+for(i in seq_along(key.sets)){
+  res <- readRDS(paste0("output/reanalysis_",key.sets[i],"_main.rds"))
+  BFs[i,] <- res$bfs
+  ES[i,]  <- c(res$ES, res$CI)
+  Ns[i,]  <- as.integer(c(ssize$`Sample Size`[ssize$Set==key.sets[i]],ssize$`Number of Studies`[ssize$Set==key.sets[i]]))
+}
+BFs <- round(1/ BFs[, 1:3], 2)
+ES <- apply(ES, 1, writeCI)
+BFs <- data.frame(`Participant-level criterion` = rep(c("All", "White & US-born", "US-Identity $>$ 7"), times = 3),
+                  Ns, BFs, ES)
+colnames(BFs) <- c("Participant-level","Sample size","Labs", "BF$_{0f}$", "BF$_{01}$", "BF$_{0+}$","Effect [95\\% CI]")
+
+apa_table(BFs, escape = FALSE, 
+          align = c("lcccccc"), 
+          stub_indents = list("Klein et al. (2022)" = 1:3, "Chatard et al. (2020)" = 4:6,
+                              "Current choice" = 7:9), 
+          col_spanners = list("Evidence" = c(4,6)),
+          caption = "Bayes factors for key analyses.", 
+          note = "All Bayes factors are reported in favor of the null model.")
+
+```
+
 
 
 
